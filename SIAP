@@ -1,0 +1,203 @@
+package peri_1;
+
+import java.sql.*;
+import java.util.Scanner;
+
+public class portals {
+    static Connection con;
+    static Scanner sc = new Scanner(System.in);
+
+    public static void main(String[] args) {
+        String url = "jdbc:mysql://localhost:3306/portals";
+        String username = "root";
+        String password = "Sindhu@27";
+
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            con = DriverManager.getConnection(url, username, password);
+            System.out.println("Connected to Internship Portal Database!");
+
+            while (true) {
+                System.out.println("\n===== STUDENT INTERNSHIP PORTAL =====");
+                System.out.println("1. Student Registration");
+                System.out.println("2. View Available Internships");
+                System.out.println("3. Apply for Internship");
+                System.out.println("4. View My Applications");
+                System.out.println("5. Admin: View All Applications");
+                System.out.println("6. Exit");
+                System.out.print("Enter choice: ");
+                int choice = sc.nextInt();
+                sc.nextLine(); 
+
+                switch (choice) {
+                    case 1:
+                        studentRegistration();
+                        break;
+                    case 2:
+                        viewInternship();
+                        break;
+                    case 3:
+                        applyForInternship();
+                        break;
+                    case 4:
+                        viewMyApplications();
+                        break;
+                    case 5:
+                        adminViewApplications();
+                        break;
+                    case 6:
+                        System.out.println("Exiting portal... Goodbye!");
+                        con.close();
+                        System.exit(0);
+                    default:
+                        System.out.println("Invalid choice. Try again.");
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void adminViewApplication() {
+		
+		
+	}
+
+	
+    public static void studentRegistration() {
+        try {
+            System.out.print("Enter your name: ");
+            String name = sc.nextLine();
+            System.out.print("Enter your email: ");
+            String email = sc.nextLine();
+            System.out.print("Enter your phone number: ");
+            String phone = sc.nextLine();
+
+            PreparedStatement ps = con.prepareStatement(
+                    "INSERT INTO students (name, email, phone) VALUES (?, ?, ?)");
+            ps.setString(1, name);
+            ps.setString(2, email);
+            ps.setString(3, phone);
+            ps.executeUpdate();
+
+            System.out.println(" Registration successful!");
+        } catch (SQLIntegrityConstraintViolationException e) {
+            System.out.println(" Email already registered!");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+   
+    public static void viewInternship() {
+        try {
+            Statement st = con.createStatement();
+            ResultSet rs = st.executeQuery("SELECT * FROM internships");
+            System.out.println("\n--- Available Internships ---");
+            while (rs.next()) {
+                System.out.println(rs.getInt("id") + ". " +
+                        rs.getString("title") + " at " +
+                        rs.getString("company") + " (" +
+                        rs.getString("location") + ")");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+   
+    public static void applyForInternship() {
+        try {
+            System.out.print("Enter your registered email: ");
+            String email = sc.nextLine();
+
+            
+            PreparedStatement ps1 = con.prepareStatement("SELECT id FROM students WHERE email=?");
+            ps1.setString(1, email);
+            ResultSet rs1 = ps1.executeQuery();
+            if (!rs1.next()) {
+                System.out.println(" Student not found! Please register first.");
+                return;
+            }
+            int studentId = rs1.getInt("id");
+
+            
+            viewInternship();
+            System.out.print("Enter Internship ID to apply: ");
+            int internshipId = sc.nextInt();
+            sc.nextLine();
+
+            
+            PreparedStatement ps2 = con.prepareStatement(
+                    "INSERT INTO applications (student_id, internship_id) VALUES (?, ?)");
+            ps2.setInt(1, studentId);
+            ps2.setInt(2, internshipId);
+            ps2.executeUpdate();
+
+            System.out.println(" Application submitted successfully!");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }}
+   
+    public static void viewMyApplications() {
+        try {
+            System.out.print("Enter your registered email: ");
+            String email = sc.nextLine();
+
+            PreparedStatement ps = con.prepareStatement(
+                    "SELECT a.id, i.title, i.company, a.status " +
+                    "FROM applications a " +
+                    "JOIN students s ON a.student_id = s.id " +
+                    "JOIN internships i ON a.internship_id = i.id " +
+                    "WHERE s.email = ?");
+            ps.setString(1, email);
+            ResultSet rs = ps.executeQuery();
+
+            System.out.println("\n--- My Applications ---");
+            boolean found = false;
+            while (rs.next()) {
+                found = true;
+                System.out.println("Application ID: " + rs.getInt("id") +
+                        " | " + rs.getString("title") +
+                        " at " + rs.getString("company") +
+                        " | Status: " + rs.getString("status"));
+            }
+            if (!found) {
+                System.out.println(" No applications found!");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+   
+    public static void adminViewApplications() {
+        try {
+            System.out.print("Enter admin password: ");
+            String pass = sc.nextLine();
+            if (!pass.equals("admin123")) {
+                System.out.println(" Incorrect password!");
+                return;
+            }
+
+            Statement st = con.createStatement();
+            ResultSet rs = st.executeQuery(
+                    "SELECT a.id, s.name, s.email, i.title, i.company, a.status " +
+                    "FROM applications a " +
+                    "JOIN students s ON a.student_id = s.id " +
+                    "JOIN internships i ON a.internship_id = i.id");
+
+            System.out.println("\n--- All Applications (Admin) ---");
+            while (rs.next()) {
+                System.out.println("App ID: " + rs.getInt("id") +
+                        " | Student: " + rs.getString("name") +
+                        " (" + rs.getString("email") + ")" +
+                        " | Internship: " + rs.getString("title") +
+                        " at " + rs.getString("company") +
+                        " | Status: " + rs.getString("status"));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
